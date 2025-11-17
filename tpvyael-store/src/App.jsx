@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Check, Package, Users, DollarSign, TrendingUp, LogOut, Eye, EyeOff, RefreshCw, Menu, X, LayoutDashboard, Box, Store } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Check, Package, Users, DollarSign, TrendingUp, LogOut, Eye, EyeOff, RefreshCw, Menu, X, LayoutDashboard, Box, Store, Shield } from 'lucide-react';
 
 function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -135,6 +135,7 @@ function Dashboard({ token, onLogout }) {
   const [orderComplete, setOrderComplete] = useState(false);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -142,6 +143,10 @@ function Dashboard({ token, onLogout }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [showEditRoleModal, setShowEditRoleModal] = useState(false);
+  const [showDeleteRoleModal, setShowDeleteRoleModal] = useState(false);
   const [formData, setFormData] = useState({
     Nombre: '',
     Descripcion: '',
@@ -151,12 +156,16 @@ function Dashboard({ token, onLogout }) {
     CategoriaId: '',
     Activo: true
   });
+  const [roleFormData, setRoleFormData] = useState({
+    Nombre: ''
+  });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
     loadProducts();
     loadCategories();
+    loadRoles();
   }, []);
 
   const loadProducts = async () => {
@@ -199,6 +208,26 @@ function Dashboard({ token, onLogout }) {
       setCategories(data);
     } catch (error) {
       console.error('Error al cargar categorías:', error);
+    }
+  };
+
+ const loadRoles = async () => {
+    try {
+      const response = await fetch('https://lish-hwrw.onrender.com/api/Rol', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar roles');
+      }
+      
+      const data = await response.json();
+      setRoles(data);
+    } catch (error) {
+      console.error('Error al cargar roles:', error);
     }
   };
 
@@ -350,6 +379,106 @@ function Dashboard({ token, onLogout }) {
     }
   };
 
+  const createRole = async () => {
+    setFormLoading(true);
+    setFormError('');
+
+    try {
+      const response = await fetch('https://lish-hwrw.onrender.com/api/Rol/crear', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          Nombre: roleFormData.Nombre
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al crear el rol');
+      }
+
+      setShowCreateRoleModal(false);
+      setRoleFormData({ Nombre: '' });
+      await loadRoles();
+    } catch (error) {
+      setFormError(error.message || 'Error al crear el rol');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const openEditRoleModal = (role) => {
+    setSelectedRole(role);
+    setRoleFormData({ Nombre: role.Nombre });
+    setShowEditRoleModal(true);
+  };
+
+  const updateRole = async () => {
+    setFormLoading(true);
+    setFormError('');
+
+    try {
+      const response = await fetch(`https://lish-hwrw.onrender.com/api/Rol/${selectedRole.Id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          IdRol: selectedRole.Id,
+          Nombre: roleFormData.Nombre
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el rol');
+      }
+
+      setShowEditRoleModal(false);
+      setSelectedRole(null);
+      setRoleFormData({ Nombre: '' });
+      await loadRoles();
+    } catch (error) {
+      setFormError(error.message || 'Error al actualizar el rol');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const openDeleteRoleModal = (role) => {
+    setSelectedRole(role);
+    setShowDeleteRoleModal(true);
+  };
+
+  const deleteRole = async () => {
+    setFormLoading(true);
+    setFormError('');
+
+    try {
+      const response = await fetch(`https://lish-hwrw.onrender.com/api/Rol/${selectedRole.Id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar el rol');
+      }
+
+      setShowDeleteRoleModal(false);
+      setSelectedRole(null);
+      await loadRoles();
+    } catch (error) {
+      setFormError(error.message || 'Error al eliminar el rol');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const addToCart = (product) => {
     const existing = cart.find(item => item.Id === product.Id);
     if (existing) {
@@ -463,6 +592,20 @@ function Dashboard({ token, onLogout }) {
               <Store size={20} />
               <span className="font-semibold">Tienda</span>
             </button>
+
+            <button
+              onClick={() => { setActiveTab('roles'); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'roles' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              }`}
+              style={{ 
+                backgroundColor: activeTab === 'roles' ? '#6BA54A' : 'transparent',
+                color: '#FDFDFD' 
+              }}
+            >
+              <Shield size={20} />
+              <span className="font-semibold">Roles</span>
+            </button>
           </nav>
 
           <div className="p-4 border-t" style={{ borderColor: '#454545' }}>
@@ -500,6 +643,7 @@ function Dashboard({ token, onLogout }) {
               {activeTab === 'overview' && 'Panel de Control'}
               {activeTab === 'products' && 'Gestión de Productos'}
               {activeTab === 'store' && 'Tienda'}
+              {activeTab === 'roles' && 'Gestión de Roles'}
             </h2>
 
             {activeTab === 'store' && (
@@ -540,7 +684,7 @@ function Dashboard({ token, onLogout }) {
                   <input
                     type="text"
                     name="Nombre"
-                    value=""
+                    value={formData.Nombre}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
                     style={{ 
@@ -558,7 +702,7 @@ function Dashboard({ token, onLogout }) {
                   </label>
                   <textarea
                     name="Descripcion"
-                    value=""
+                    value={formData.Descripcion}
                     onChange={handleInputChange}
                     rows="3"
                     className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
@@ -579,7 +723,7 @@ function Dashboard({ token, onLogout }) {
                     <input
                       type="number"
                       name="Precio"
-                      value=""
+                      value={formData.Precio}
                       onChange={handleInputChange}
                       step="0.01"
                       className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
@@ -599,7 +743,7 @@ function Dashboard({ token, onLogout }) {
                     <input
                       type="number"
                       name="Stock"
-                      value=""
+                      value={formData.Stock}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
                       style={{ 
@@ -618,7 +762,7 @@ function Dashboard({ token, onLogout }) {
                   </label>
                   <select
                     name="CategoriaId"
-                    value=""
+                    value={formData.CategoriaId}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
                     style={{ 
@@ -641,7 +785,7 @@ function Dashboard({ token, onLogout }) {
                   <input
                     type="text"
                     name="ImagenUrl"
-                    value=""
+                    value={formData.ImagenUrl}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
                     style={{ 
@@ -653,7 +797,7 @@ function Dashboard({ token, onLogout }) {
                   />
                   {formData.ImagenUrl && (
                     <img 
-                      src="" 
+                      src={formData.ImagenUrl}
                       alt="Preview" 
                       className="mt-2 w-32 h-32 object-cover rounded"
                       onError={(e) => e.target.style.display = 'none'}
@@ -702,6 +846,65 @@ function Dashboard({ token, onLogout }) {
             </div>
           </div>
         )}
+
+        {showCreateRoleModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div className="rounded-lg shadow-xl max-w-md w-full" style={{ backgroundColor: '#EEEEEE' }}>
+      <div className="sticky top-0 p-6 border-b flex justify-between items-center" style={{ backgroundColor: '#EEEEEE', borderColor: '#B0B0B0' }}>
+        <h3 className="text-2xl font-bold" style={{ color: '#111827' }}>Crear Nuevo Rol</h3>
+        <button onClick={() => { setShowCreateRoleModal(false); setFormError(''); }} style={{ color: '#6C757D' }}>
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#111827' }}>
+            Nombre del Rol *
+          </label>
+          <input
+            type="text"
+            value={roleFormData.Nombre}
+            onChange={(e) => setRoleFormData({ Nombre: e.target.value })}
+            className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
+            style={{ 
+              backgroundColor: '#FDFDFD', 
+              color: '#111827',
+              border: '2px solid #B0B0B0'
+            }}
+            placeholder="Ej: Vendedor, Supervisor, Gerente"
+          />
+        </div>
+
+        {formError && (
+          <div className="p-3 rounded-lg" style={{ backgroundColor: '#E05257', color: '#FDFDFD' }}>
+            {formError}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-4">
+          <button
+            onClick={() => { setShowCreateRoleModal(false); setFormError(''); }}
+            className="flex-1 py-3 rounded-lg font-semibold"
+            style={{ backgroundColor: '#FDFDFD', color: '#6C757D', border: '2px solid #B0B0B0' }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={createRole}
+            disabled={formLoading || !roleFormData.Nombre}
+            className="flex-1 py-3 rounded-lg font-semibold transition-colors hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: '#6BA54A', color: '#FDFDFD' }}
+          >
+            {formLoading ? 'Creando...' : 'Crear Rol'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+
 
         {showEditModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -924,6 +1127,103 @@ function Dashboard({ token, onLogout }) {
           </div>
         )}
 
+        {showDeleteRoleModal && selectedRole && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="rounded-lg shadow-xl max-w-md w-full" style={{ backgroundColor: '#EEEEEE' }}>
+              <div className="p-6 border-b" style={{ borderColor: '#B0B0B0' }}>
+                <h3 className="text-2xl font-bold" style={{ color: '#111827' }}>Confirmar Eliminación</h3>
+              </div>
+
+              <div className="p-6">
+                <p style={{ color: '#6C757D' }}>
+                  ¿Estás seguro de que deseas eliminar el rol "{selectedRole.Nombre}"? Esta acción no se puede deshacer.
+                </p>
+
+                {formError && (
+                  <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#E05257', color: '#FDFDFD' }}>
+                    {formError}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4 mt-4">
+                  <button
+                    onClick={() => { setShowDeleteRoleModal(false); setSelectedRole(null); setFormError(''); }}
+                    className="flex-1 py-3 rounded-lg font-semibold"
+                    style={{ backgroundColor: '#FDFDFD', color: '#6C757D', border: '2px solid #B0B0B0' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={deleteRole}
+                    disabled={formLoading}
+                    className="flex-1 py-3 rounded-lg font-semibold transition-colors hover:opacity-90 disabled:opacity-50"
+                    style={{ backgroundColor: '#E05257', color: '#FDFDFD' }}
+                  >
+                    {formLoading ? 'Eliminando...' : 'Eliminar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showEditRoleModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div className="rounded-lg shadow-xl max-w-md w-full" style={{ backgroundColor: '#EEEEEE' }}>
+      <div className="sticky top-0 p-6 border-b flex justify-between items-center" style={{ backgroundColor: '#EEEEEE', borderColor: '#B0B0B0' }}>
+        <h3 className="text-2xl font-bold" style={{ color: '#111827' }}>Editar Rol</h3>
+        <button onClick={() => { setShowEditRoleModal(false); setFormError(''); }} style={{ color: '#6C757D' }}>
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#111827' }}>
+            Nombre del Rol *
+          </label>
+          <input
+            type="text"
+            value={roleFormData.Nombre}
+            onChange={(e) => setRoleFormData({ Nombre: e.target.value })}
+            className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
+            style={{ 
+              backgroundColor: '#FDFDFD', 
+              color: '#111827',
+              border: '2px solid #B0B0B0'
+            }}
+            placeholder="Ej: Vendedor, Supervisor, Gerente"
+          />
+        </div>
+
+        {formError && (
+          <div className="p-3 rounded-lg" style={{ backgroundColor: '#E05257', color: '#FDFDFD' }}>
+            {formError}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-4">
+          <button
+            onClick={() => { setShowEditRoleModal(false); setFormError(''); }}
+            className="flex-1 py-3 rounded-lg font-semibold"
+            style={{ backgroundColor: '#FDFDFD', color: '#6C757D', border: '2px solid #B0B0B0' }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={updateRole}
+            disabled={formLoading || !roleFormData.Nombre}
+            className="flex-1 py-3 rounded-lg font-semibold transition-colors hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: '#6BA54A', color: '#FDFDFD' }}
+          >
+            {formLoading ? 'Editando...' : 'Editar Rol'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+        )}
+
         <div className="flex-1 p-4 lg:p-8">
           {activeTab === 'overview' && (
             <>
@@ -1136,6 +1436,87 @@ function Dashboard({ token, onLogout }) {
             </>
           )}
 
+          {activeTab === 'roles' && (
+  <>
+    <div className="flex justify-between items-center mb-8">
+      <h2 className="text-3xl font-bold" style={{ color: '#111827' }}>Gestión de Roles</h2>
+      <div className="flex gap-3">
+        <button
+          onClick={loadRoles}
+          disabled={loading}
+          className="px-4 py-3 rounded-lg font-semibold flex items-center gap-2"
+          style={{ backgroundColor: '#FACC2E', color: '#111827' }}
+        >
+          <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          Recargar
+        </button>
+        <button
+          onClick={() => setShowCreateRoleModal(true)}
+          className="px-6 py-3 rounded-lg font-semibold flex items-center gap-2"
+          style={{ backgroundColor: '#6BA54A', color: '#FDFDFD' }}
+        >
+          <Plus size={20} />
+          Nuevo Rol
+        </button>
+      </div>
+    </div>
+
+    {loading ? (
+      <div className="text-center py-12">
+        <RefreshCw size={48} className="animate-spin mx-auto" style={{ color: '#6BA54A' }} />
+        <p className="mt-4" style={{ color: '#6C757D' }}>Cargando roles...</p>
+      </div>
+    ) : roles.length === 0 ? (
+      <div className="text-center py-12">
+        <p className="text-xl" style={{ color: '#6C757D' }}>No hay roles disponibles</p>
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {roles.map(role => (
+          <div key={role.Id} className="rounded-lg shadow-lg overflow-hidden" style={{ backgroundColor: '#EEEEEE' }}>
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 rounded-lg" style={{ backgroundColor: '#6BA54A' }}>
+                  <Shield size={32} color="#FDFDFD" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-xl" style={{ color: '#111827' }}>{role.Nombre}</h3>
+                  <span className="text-sm" style={{ color: '#6C757D' }}>ID: {role.Id}</span>
+                </div>
+              </div>
+              
+              <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: '#FDFDFD' }}>
+                <p className="text-sm font-semibold mb-1" style={{ color: '#6C757D' }}>
+                  Usuarios asignados:
+                </p>
+                <p className="text-2xl font-bold" style={{ color: '#111827' }}>
+                  {role.Usuarios?.length || 0}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openEditRoleModal(role)}
+                  className="flex-1 py-2 rounded-lg font-semibold hover:opacity-80"
+                  style={{ backgroundColor: '#FDFDFD', color: '#6C757D', border: '2px solid #B0B0B0' }}
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => openDeleteRoleModal(role)}
+                  className="px-4 py-2 rounded-lg hover:opacity-80"
+                  style={{ backgroundColor: '#E05257', color: '#FDFDFD' }}
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </>
+)}
           {activeTab === 'store' && (
             <>
               {view === 'products' ? (
